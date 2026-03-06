@@ -2,7 +2,7 @@
 local CFG = {
     EN=true, LOG=true, TICK=0.016, FOV=45, MAXD=6000, NORECOIL=true,
     MAX_DEG=6.0, JITTER=0.4, CHEST_Z=25, MY_EYE_Z=55,
-    LOGP="/storage/emulated/0/Android/data/com.tencent.tmgp.codev/files/UE4Game/CodeV/CodeV/Saved/Paks/puffer_temp/aimbot_log.txt",
+    LOGP="",
 }
 local ok_tt,TT=pcall(require,"Common.Framework.TimeTicker")
 local AP=nil
