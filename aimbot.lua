@@ -1,13 +1,13 @@
--- SKIN CHANGER v4.0 — Retry Until Weapons Ready
+-- SKIN CHANGER v5.0 — Direct AvatarComp PutOnEquipment
 ----------------------------------------------------------------------
 local CFG = {
     LOG  = true,
-    LOGP = "/storage/emulated/0/Android/data/com.tencent.tmgp.codev/files/UE4Game/CodeV/CodeV/Saved/Paks/puffer_temp/skin_log2.txt",
+    LOGP = "/storage/emulated/0/Android/data/com.tencent.tmgp.codev/files/UE4Game/CodeV/CodeV/Saved/Paks/puffer_temp/skin_log3.txt",
     
+    -- Set desired skins (AvatarID from your skin list)
     DESIRED_SKINS = {
-        [10101] = 101005011,   -- Classic -> 万铀引力辐爆者
-        [10104] = 104003011,   -- Ghost -> 天界神兵
-        [10103] = 103003111,   -- Frenzy -> 全息波普
+        [10101] = 101010400,   -- Classic -> 琉璃幻梦
+        -- [10104] = 104003011,   -- Ghost -> 天界神兵
     },
 }
 
@@ -20,24 +20,15 @@ local function L(m)
 end
 pcall(function() local f=io.open(CFG.LOGP,"w") if f then f:write("") f:close() end end)
 L("╔══════════════════════════════════════╗")
-L("║  SKIN CHANGER v4.0 — Auto Retry     ║")
+L("║  SKIN CHANGER v5.0 — PutOnEquipment ║")
 L("╚══════════════════════════════════════╝")
 
 local function SR(n) local o,v = pcall(require, n) return o and v or nil end
-local function SIL(n) local o,v = pcall(function() return import_func_lib(n) end) return o and v or nil end
-
-local GP = SIL("GameplayStatics")
-local RPCSender = SR("Game.Core.RPC.RPCSender")
-local GameSystemUtil = SR("Game.Core.Util.GameSystemUtil")
 local ok_tt, TT = pcall(require, "Common.Framework.TimeTicker")
 
 local function GetPC()
     if GameAPI and GameAPI.GetPlayerController then
         local o,p = pcall(function() return GameAPI.GetPlayerController() end)
-        if o and p and slua_isValid(p) then return p end
-    end
-    if GP then
-        local o,p = pcall(function() return GP.GetPlayerController(slua_getWorld(), 0) end)
         if o and p and slua_isValid(p) then return p end
     end
 end
@@ -46,177 +37,208 @@ local function GetPS()
         local o,p = pcall(function() return GameAPI.GetPlayerState() end)
         if o and p and slua_isValid(p) then return p end
     end
-    local pc = GetPC()
-    if pc then
-        local o,p = pcall(function() return pc:GetSGPlayerState() end)
-        if o and p and slua_isValid(p) then return p end
-    end
 end
 local function GetCh(pc)
     if not pc then return end
     local o,c = pcall(function() return pc:GetSGBaseCharacter() end)
     if o and c and slua_isValid(c) then return c end
-    local o2,c2 = pcall(function() return pc:K2_GetPawn() end)
-    if o2 and c2 and slua_isValid(c2) then return c2 end
 end
 
 ----------------------------------------------------------------------
--- CHECK IF WEAPONS ARE READY
+-- DIRECT SKIN CHANGE using AvatarComp internals
 ----------------------------------------------------------------------
-local function GetWeapons()
-    local pc = GetPC()
-    if not pc then return nil, 0 end
-    local ch = GetCh(pc)
-    if not ch then return nil, 0 end
-    local wl = nil
-    pcall(function() wl = ch:GetWeaponList() end)
-    if not wl then return nil, 0 end
-    return wl, wl:Num()
-end
-
-----------------------------------------------------------------------
--- TRY ALL SKIN CHANGE METHODS ON ONE WEAPON
-----------------------------------------------------------------------
-local function TryChangeWeaponSkin(weaponObj, ps, weaponID, targetSkinID)
-    local curAvatar = 0
-    pcall(function() curAvatar = weaponObj:GetWeaponAvatarID() end)
-    L("  Current AvatarID: " .. tostring(curAvatar))
-    
-    if curAvatar == targetSkinID then
-        L("  Already has target skin!")
-        return true
+local function TryDirectSkinChange(weaponObj, targetAvatarID)
+    local avComp = nil
+    pcall(function() avComp = weaponObj.AvatarComp end)
+    if not avComp or not slua_isValid(avComp) then
+        L("  [X] No AvatarComp!")
+        return false
     end
     
-    -- A: Create override table + apply
+    -- Step 1: Check if target skin's PAK is ready
+    local pakReady = false
     pcall(function()
-        if not ps.WeaponAvatarOverrideInfo then
-            ps.WeaponAvatarOverrideInfo = {}
+        local WeaponUtil = require("Game.Mod.BaseMod.GamePlay.Core.Components.Avatar.WeaponUtil")
+        if WeaponUtil and WeaponUtil.IsAvatarPakRdy then
+            pakReady = WeaponUtil:IsAvatarPakRdy(targetAvatarID)
         end
-        ps.WeaponAvatarOverrideInfo[weaponID] = {targetSkinID}
-        L("  [A] Override table set")
     end)
+    L("  [1] IsAvatarPakRdy(" .. targetAvatarID .. ") = " .. tostring(pakReady))
+    
+    -- Step 2: Get data asset path for target skin
+    local targetPath = ""
     pcall(function()
-        ps:SetWeaponAvatarOverride(weaponID, {targetSkinID})
-        L("  [A2] SetWeaponAvatarOverride OK")
+        targetPath = avComp:InternalGetDataAssetPath(targetAvatarID)
     end)
+    L("  [2] DataAssetPath = " .. tostring(targetPath))
+    
+    -- Step 3: Get current data asset path for comparison
+    local curAvatarID = 0
+    pcall(function() curAvatarID = weaponObj:GetWeaponAvatarID() end)
+    local curPath = ""
     pcall(function()
-        ps:ApplyWeaponAvatarImmediately(weaponID)
-        L("  [A3] ApplyWeaponAvatarImmediately OK")
+        curPath = avComp:InternalGetDataAssetPath(curAvatarID)
+    end)
+    L("  [3] Current path = " .. tostring(curPath))
+    
+    -- Step 4: Try PutOnEquipment with target AvatarID
+    -- This is the KEY function — it's called in OnWeaponAvatarChange
+    -- and has NO GIsDSOrStandalone check!
+    local putOnOK = false
+    pcall(function()
+        -- FSGAvatarItemDefineID structure
+        local itemDef = FSGAvatarItemDefineID()
+        itemDef.ItemType = 12
+        itemDef.ItemID = targetAvatarID
+        avComp:PutOnEquipment(itemDef)
+        putOnOK = true
+        L("  [4] PutOnEquipment(" .. targetAvatarID .. ") OK!")
     end)
     
-    -- B: AvatarComp direct manipulation
+    if not putOnOK then
+        -- Try alternative: construct the struct differently
+        pcall(function()
+            local itemDef = {ItemType = 12, ItemID = targetAvatarID}
+            avComp:PutOnEquipment(itemDef)
+            L("  [4b] PutOnEquipment(table) OK!")
+            putOnOK = true
+        end)
+    end
+    
+    -- Step 5: Try CheckAvatarDataDirty to force refresh
     pcall(function()
-        local ac = weaponObj.AvatarComp
-        if ac and slua_isValid(ac) then
-            -- List all functions
-            local funcs = {}
+        avComp:CheckAvatarDataDirty()
+        L("  [5] CheckAvatarDataDirty OK!")
+    end)
+    
+    -- Step 6: Try to force data asset reload
+    pcall(function()
+        if targetPath ~= "" then
+            local SGAssetLoadLibrary = SGAssetLoadLibrary
+            if SGAssetLoadLibrary then
+                local dataAsset = SGAssetLoadLibrary.GetDataAsset(targetPath)
+                L("  [6] SGAssetLoadLibrary.GetDataAsset = " .. tostring(dataAsset ~= nil))
+            end
+        end
+    end)
+    
+    -- Step 7: Try GetMasterMesh + change mesh/material
+    pcall(function()
+        local masterMesh = weaponObj:GetMasterMesh()
+        if masterMesh then
+            L("  [7] GetMasterMesh = " .. tostring(masterMesh))
+            -- Log mesh info
             pcall(function()
-                for k,v in pairs(ac) do
-                    if type(v) == "function" then funcs[#funcs+1] = k end
+                local mesh = masterMesh:GetSkeletalMeshAsset()
+                L("  [7] SkeletalMeshAsset = " .. tostring(mesh))
+            end)
+            pcall(function()
+                local numMats = masterMesh:GetNumMaterials()
+                L("  [7] NumMaterials = " .. tostring(numMats))
+            end)
+        else
+            L("  [7] No MasterMesh")
+        end
+    end)
+    
+    -- Step 8: List all weapon components
+    pcall(function()
+        local compTypes = {0,1,2,3,4,5,6,7,8,9,10}
+        for _, ct in ipairs(compTypes) do
+            pcall(function()
+                local comp = weaponObj:GetWeaponComponent(ct)
+                if comp and slua_isValid(comp) then
+                    L("  [8] WeaponComponent[" .. ct .. "] = " .. tostring(comp))
                 end
             end)
-            if #funcs > 0 then L("  [B] AvatarComp funcs: " .. table.concat(funcs, ",")) end
-            
-            pcall(function() ac:SetAvatarID(targetSkinID) L("  [B] SetAvatarID OK") end)
-            pcall(function() ac:InitAvatar(targetSkinID) L("  [B] InitAvatar OK") end)
-            pcall(function() ac:ReloadAvatar() L("  [B] ReloadAvatar OK") end)
-            pcall(function() ac:ChangeAvatar(targetSkinID) L("  [B] ChangeAvatar OK") end)
-            pcall(function() ac:OnRep_AvatarID() L("  [B] OnRep_AvatarID OK") end)
-            pcall(function() ac:RefreshAvatar() L("  [B] RefreshAvatar OK") end)
-        else
-            L("  [B] No AvatarComp")
-        end
-    end)
-    
-    -- C: SGEquipment remove + re-add
-    pcall(function()
-        local eq = ps.SGEquipment
-        if eq and slua_isValid(eq) then
-            local itemID = eq:GetItemID(weaponID)
-            if itemID then
-                local acq = eq:GetItemAcquireType(itemID)
-                eq:RemoveItemsByResID(weaponID)
-                eq:AddItemByResID(weaponID, 1, acq or 0)
-                L("  [C] Re-equipped, AcqType=" .. tostring(acq))
-            else
-                L("  [C] No itemID")
-            end
-        else
-            L("  [C] No SGEquipment")
-        end
-    end)
-    
-    -- D: RPCs
-    pcall(function()
-        if RPCSender then
-            RPCSender:Server("ServerRPC_ChangeWeaponAvatar", 1, weaponID, targetSkinID, true)
-            L("  [D] ServerRPC_ChangeWeaponAvatar sent")
-        end
-    end)
-    pcall(function()
-        if RPCSender then
-            RPCSender:Server("ServerRPC_ActivateWeaponSkinList", 1)
-            L("  [D2] ActivateWeaponSkinList sent")
         end
     end)
     
     -- Verify
-    local newAvatar = 0
-    pcall(function() newAvatar = weaponObj:GetWeaponAvatarID() end)
-    local changed = (newAvatar ~= curAvatar)
-    L("  [RESULT] AvatarID: " .. tostring(curAvatar) .. " -> " .. tostring(newAvatar) .. (changed and " ✓ CHANGED!" or " ✗ same"))
-    return changed
+    local newAvatarID = 0
+    pcall(function() newAvatarID = weaponObj:GetWeaponAvatarID() end)
+    L("  [RESULT] AvatarID: " .. curAvatarID .. " -> " .. newAvatarID)
+    
+    return putOnOK
 end
 
 ----------------------------------------------------------------------
--- MAIN TICK
+-- TRY ALL SKINS IN LIST to find which ones have PAK ready
+----------------------------------------------------------------------
+local function ScanAvailableSkins(avComp, weaponID)
+    L("")
+    L("=== SCAN: Which skins have assets ready? ===")
+    
+    -- Test skins for Classic (10101)
+    local testSkins = {}
+    if weaponID == 10101 then
+        testSkins = {
+            101000000, -- Default
+            101010400, -- 琉璃幻梦
+            101001000, -- 涂鸦艺廊
+            101002100, -- 寒冬兵器
+            101050600, -- 国王工设
+            101001200, -- 樱花
+            101002401, -- 源能者危机001
+            101004211, -- 紫阙金琅_标准
+            101005011, -- 万铀引力辐爆者_标准
+            101005110, -- 无垠星环_标准
+        }
+    elseif weaponID == 10901 then
+        -- Test some knife skins
+        testSkins = {901000000}
+    end
+    
+    for _, skinID in ipairs(testSkins) do
+        local pakRdy = "?"
+        local path = "?"
+        pcall(function()
+            local WeaponUtil = require("Game.Mod.BaseMod.GamePlay.Core.Components.Avatar.WeaponUtil")
+            pakRdy = tostring(WeaponUtil:IsAvatarPakRdy(skinID))
+        end)
+        pcall(function()
+            path = avComp:InternalGetDataAssetPath(skinID)
+        end)
+        L("  Skin " .. skinID .. " | PAK=" .. pakRdy .. " | Path=" .. tostring(path))
+    end
+end
+
+----------------------------------------------------------------------
+-- MAIN
 ----------------------------------------------------------------------
 local applied = false
 local checkAcc = 0
 local checkCount = 0
-local maxChecks = 30  -- Try for 30 seconds
 
 local function OnTick(dt)
     if applied then return end
-    
     checkAcc = checkAcc + dt
-    if checkAcc < 1.0 then return end  -- Check every 1 second
+    if checkAcc < 1.0 then return end
     checkAcc = 0
     checkCount = checkCount + 1
+    if checkCount > 30 then applied = true L("[TIMEOUT]") return end
     
-    if checkCount > maxChecks then
-        L("[TIMEOUT] Gave up after " .. maxChecks .. " seconds")
-        applied = true
+    local pc = GetPC()
+    local ps = GetPS()
+    local ch = pc and GetCh(pc)
+    if not ch then return end
+    
+    local wl = nil
+    pcall(function() wl = ch:GetWeaponList() end)
+    if not wl or wl:Num() == 0 then
+        if checkCount <= 5 or checkCount % 5 == 0 then
+            L("[WAIT] t=" .. checkCount .. "s weapons=0")
+        end
         return
     end
     
-    -- Check if player alive
-    local ps = GetPS()
-    if not ps then return end
-    local alive = false
-    pcall(function() alive = ps:IsAlive() end)
-    if not alive then return end
-    
-    -- Check if weapons ready
-    local wl, wCount = GetWeapons()
-    
-    -- Also check SGEquipment
-    local hasEq = false
-    pcall(function() hasEq = (ps.SGEquipment ~= nil and slua_isValid(ps.SGEquipment)) end)
-    
-    if checkCount <= 5 or checkCount % 5 == 0 then
-        L("[WAIT] t=" .. checkCount .. "s weapons=" .. wCount .. " SGEquip=" .. tostring(hasEq))
-    end
-    
-    -- Need at least 1 weapon to proceed
-    if wCount == 0 then return end
-    
+    applied = true
     L("")
     L("========================================")
-    L("  WEAPONS READY! Count=" .. wCount .. " at t=" .. checkCount .. "s")
+    L("  WEAPONS READY! Count=" .. wl:Num() .. " at t=" .. checkCount .. "s")
     L("========================================")
     
-    -- Log all current weapons
+    -- Process each weapon
     for i = 0, wl:Num() - 1 do
         local w = wl:Get(i)
         if w and slua_isValid(w) then
@@ -224,87 +246,31 @@ local function OnTick(dt)
             pcall(function() wid = w:GetWeaponID() end)
             pcall(function() avid = w:GetWeaponAvatarID() end)
             L("  Weapon[" .. i .. "] ID=" .. wid .. " AvatarID=" .. avid)
-        end
-    end
-    
-    -- Log SGEquipment and PlayerInfo state
-    pcall(function()
-        L("  SGEquipment: " .. tostring(hasEq))
-        local pi = ps.PlayerInfo
-        if pi then
-            L("  BackpackID: " .. tostring(pi.DefaultWeaponBackpackId))
-            if pi.AllWeaponBackpack then
-                for bpId, bp in pairs(pi.AllWeaponBackpack) do
-                    L("  Backpack[" .. bpId .. "] has " .. tostring(bp.WeaponSkinList and #bp.WeaponSkinList or 0) .. " skins")
-                end
-            end
-        end
-        L("  OverrideInfo: " .. tostring(ps.WeaponAvatarOverrideInfo ~= nil))
-    end)
-    
-    -- Try to change each desired skin
-    local anyChanged = false
-    for weaponID, targetSkin in pairs(CFG.DESIRED_SKINS) do
-        L("")
-        L("=== WeaponID=" .. weaponID .. " -> Skin=" .. targetSkin .. " ===")
-        
-        -- Find weapon in list
-        local weaponObj = nil
-        for i = 0, wl:Num() - 1 do
-            local w = wl:Get(i)
-            if w and slua_isValid(w) then
-                local wid = 0
-                pcall(function() wid = w:GetWeaponID() end)
-                if wid == weaponID then weaponObj = w break end
-            end
-        end
-        
-        if not weaponObj then
-            L("  Weapon " .. weaponID .. " not in inventory")
-        else
-            local ok = TryChangeWeaponSkin(weaponObj, ps, weaponID, targetSkin)
-            if ok then anyChanged = true end
-        end
-    end
-    
-    -- If nothing in desired list matched, try with whatever weapon is available
-    if not anyChanged then
-        L("")
-        L("=== No desired weapons found, trying ANY weapon ===")
-        local w = wl:Get(0)
-        if w and slua_isValid(w) then
-            local wid, avid = 0, 0
-            pcall(function() wid = w:GetWeaponID() end)
-            pcall(function() avid = w:GetWeaponAvatarID() end)
-            L("  Testing with WeaponID=" .. wid .. " CurAvatar=" .. avid)
             
-            -- Try common skin for this weapon
-            -- Pattern: weaponID prefix * 10000000 + skin variant
-            local prefix = math.floor(wid / 100)
-            local testSkins = {
-                prefix * 1000000,          -- default
-                prefix * 1000000 + 10400,  -- 琉璃幻梦
-                prefix * 1000000 + 1000,   -- 涂鸦
-                avid + 1,                   -- next avatar
-                avid - 1,                   -- prev avatar
-            }
-            for _, ts in ipairs(testSkins) do
-                if ts > 0 and ts ~= avid then
-                    L("  Trying skin " .. ts .. "...")
-                    TryChangeWeaponSkin(w, ps, wid, ts)
-                end
+            -- Scan available skins for this weapon
+            local avComp = nil
+            pcall(function() avComp = w.AvatarComp end)
+            if avComp and slua_isValid(avComp) then
+                ScanAvailableSkins(avComp, wid)
+            end
+            
+            -- Try to change skin
+            local targetSkin = CFG.DESIRED_SKINS[wid]
+            if targetSkin then
+                L("")
+                L("=== CHANGING WeaponID=" .. wid .. " to Skin=" .. targetSkin .. " ===")
+                TryDirectSkinChange(w, targetSkin)
             end
         end
     end
     
-    applied = true
     L("")
     L("=== COMPLETE ===")
 end
 
 if ok_tt then
     TT.AddTimerLoop(0.02, OnTick)
-    L("[BOOT] Waiting for weapons to load...")
+    L("[BOOT] Waiting for weapons...")
 else
-    L("[FATAL] TimeTicker not found!")
+    L("[FATAL] No TimeTicker!")
 end
