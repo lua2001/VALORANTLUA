@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------
 local CFG = {
     LOG  = true,
-    LOGP = "/storage/emulated/0/Android/data/com.tencent.tmgp.codev/files/UE4Game/CodeV/CodeV/Saved/Paks/puffer_temp/skin_log.txt",
+    LOGP = "/storage/emulated/0/Android/data/com.tencent.tmgp.codev/files/UE4Game/CodeV/CodeV/Saved/Paks/puffer_temp/skin_log2.txt",
     
     DESIRED_SKINS = {
         [10101] = 101005011,   -- Classic -> 万铀引力辐爆者
