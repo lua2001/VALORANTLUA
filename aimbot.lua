@@ -1,5 +1,5 @@
--- MEGA HACK v2.0 — Deep Diagnostic + All Features
--- Fixed: Uses multiple methods to find enemies + detailed logging
+-- MEGA HACK v3.0 — Fully Working
+-- Fixed: ESP Draw3D + Callout work with bots (p=nil)
 ----------------------------------------------------------------------
 local CFG = {
     ESP_OUTLINE     = true,
@@ -21,7 +21,7 @@ local CFG = {
     ESP_INTERVAL    = 0.5,
     CALLOUT_CD      = 3.0,
     LOG             = true,
-    LOGP            = "/storage/emulated/0/Android/data/com.tencent.tmgp.codev/files/UE4Game/CodeV/CodeV/Saved/Paks/puffer_temp/mega_log2.txt",
+    LOGP            = "/storage/emulated/0/Android/data/com.tencent.tmgp.codev/files/UE4Game/CodeV/CodeV/Saved/Paks/puffer_temp/mega_logv3.txt",
 }
 
 local ok_tt, TT = pcall(require, "Common.Framework.TimeTicker")
@@ -145,7 +145,7 @@ local function GetEnemies()
     local e = {}
     local method = "none"
     diagCount = diagCount + 1
-    local doDiag = (diagCount <= 5) or (diagCount % 200 == 0)
+    local doDiag = (diagCount <= 3) or (diagCount % 500 == 0)
 
     -- METHOD 1: GameAPI.GetEnemies() — the game's own function
     if #e == 0 and GameAPI and GameAPI.GetEnemies then
@@ -376,58 +376,132 @@ local function DoESPOutline(enemies)
 end
 
 ----------------------------------------------------------------------
--- ESP DRAW 3D
+-- ESP DRAW 3D (works with bots and real players)
 ----------------------------------------------------------------------
 local function DoESPDraw3D(enemies, myEye)
     if not CFG.ESP_DRAW3D or not UKSL then return end
+    local world = slua_getWorld()
     for _, v in ipairs(enemies) do
         pcall(function()
             local pos = v.c:K2_GetActorLocation()
             if not pos then return end
             local dist = VDist(myEye, pos)
-            -- Box
+            local dur = CFG.ESP_INTERVAL + 0.15
+
+            -- Box around enemy
             pcall(function()
-                UKSL.DrawDebugBox(v.c, pos, FVector(30,30,90),
-                    FLinearColor(1,0,0,0.8), FRotator(0,0,0), CFG.ESP_INTERVAL+0.1, 2)
+                UKSL.DrawDebugBox(world, pos + FVector(0,0,45), FVector(30,30,90),
+                    FLinearColor(1, 0, 0, 0.8), FRotator(0,0,0), dur, 2)
             end)
-            -- Text
+
+            -- Build info text
             local info = ""
-            pcall(function()
-                local nm = v.p and v.p:GetPlayerName() or "?"
-                local hp, sh = "?", "?"
+            -- Try to get name
+            local nm = "Enemy"
+            if v.p then
+                pcall(function() nm = v.p:GetPlayerName() end)
+            else
+                -- For bots/characters, try to get display name
+                pcall(function() nm = UKSL.GetDisplayName(v.c) end)
+                if nm == "Enemy" then
+                    pcall(function() nm = UKSL.GetObjectName(v.c) end)
+                end
+            end
+
+            -- Try to get HP/Shield
+            local hp, sh = nil, nil
+            if v.p then
                 pcall(function() hp = math.floor(v.p:GetAttributeCurValue("Health")) end)
                 pcall(function() sh = math.floor(v.p:GetAttributeCurValue("Shield")) end)
-                local spike = ""
-                pcall(function() if v.p:GetSuperData().bHasSpike then spike = " [SPIKE]" end end)
-                info = string.format("%s [HP:%s SH:%s] %dm%s", nm, hp, sh, math.floor(dist/100), spike)
-            end)
-            if info ~= "" then
+            end
+            if not hp then
+                -- Try from character directly (GetAttributeCurValue on PlayerState linked to char)
                 pcall(function()
-                    UKSL.DrawDebugString(v.c, pos+FVector(0,0,130), info, nil, FLinearColor(1,0.2,0.2,1), CFG.ESP_INTERVAL+0.1)
+                    local ps = v.c:GetPlayerState()
+                    if ps then
+                        hp = math.floor(ps:GetAttributeCurValue("Health"))
+                        sh = math.floor(ps:GetAttributeCurValue("Shield"))
+                    end
                 end)
             end
+
+            -- Check spike
+            local spike = ""
+            pcall(function()
+                local sd = nil
+                if v.p then sd = v.p:GetSuperData()
+                else
+                    local ps2 = v.c:GetPlayerState()
+                    if ps2 then sd = ps2:GetSuperData() end
+                end
+                if sd and sd.bHasSpike then spike = " *SPIKE*" end
+            end)
+
+            -- Check if alive/dying
+            local alive = true
+            pcall(function() if v.c:IsDying() then alive = false end end)
+            local aliveStr = alive and "" or " [DEAD]"
+
+            -- Format
+            if hp then
+                info = string.format("%s [HP:%d SH:%s] %dm%s%s", nm, hp, tostring(sh or 0), math.floor(dist/100), spike, aliveStr)
+            else
+                info = string.format("%s %dm%s%s", nm, math.floor(dist/100), spike, aliveStr)
+            end
+
+            -- Draw text above enemy
+            pcall(function()
+                UKSL.DrawDebugString(world, pos + FVector(0,0,150), info, nil, FLinearColor(1,0.3,0.3,1), dur)
+            end)
+
+            -- Draw line from me to enemy
+            pcall(function()
+                UKSL.DrawDebugLine(world,
+                    FVector(myEye.X, myEye.Y, myEye.Z - 30),
+                    pos + FVector(0,0,50),
+                    FLinearColor(1, 0, 0, 0.2), dur, 1)
+            end)
         end)
     end
 end
 
 ----------------------------------------------------------------------
--- AUTO CALLOUT
+-- AUTO CALLOUT (works with bots and players)
 ----------------------------------------------------------------------
 local function DoAutoCallout(enemies, myChar)
     if not CFG.AUTO_CALLOUT or not RPCSender then return end
     local now = os.clock()
     for _, v in ipairs(enemies) do
         pcall(function()
-            local key = nil
-            pcall(function() key = v.p:GetPlayerKey() end)
-            if not key then return end
-            if S.calloutTimers[key] and (now-S.calloutTimers[key]) < CFG.CALLOUT_CD then return end
             local pos = v.c:K2_GetActorLocation()
+            if not pos then return end
             local mp = myChar:K2_GetActorLocation()
-            if IsVisible(myChar, {X=mp.X,Y=mp.Y,Z=mp.Z+CFG.MY_EYE_Z}, pos) then
-                pcall(function() RPCSender:Server("ServerRPC_OnReceivePostEnemySpotted", key, true, {}) end)
-                S.calloutTimers[key] = now
-                L("[CALLOUT] key=" .. tostring(key))
+            local eyePos = {X=mp.X, Y=mp.Y, Z=mp.Z + CFG.MY_EYE_Z}
+
+            -- Cooldown per character
+            local ck = tostring(v.c)
+            if S.calloutTimers[ck] and (now - S.calloutTimers[ck]) < CFG.CALLOUT_CD then return end
+
+            -- Only callout if visible
+            if not IsVisible(myChar, eyePos, pos) then return end
+
+            -- Method 1: PlayerKey RPC (works with real players)
+            if v.p then
+                pcall(function()
+                    local key = v.p:GetPlayerKey()
+                    if key then
+                        RPCSender:Server("ServerRPC_OnReceivePostEnemySpotted", key, true, {})
+                        S.calloutTimers[ck] = now
+                        L("[CALLOUT] player key=" .. tostring(key))
+                    end
+                end)
+            else
+                -- Method 2: QuickSign ping at enemy position (works with bots)
+                pcall(function()
+                    RPCSender:Server("ServerRPC_QuickSign", 1, pos, nil, 0, false, false)
+                    S.calloutTimers[ck] = now
+                    L("[CALLOUT] ping at pos")
+                end)
             end
         end)
     end
@@ -538,7 +612,7 @@ end
 ----------------------------------------------------------------------
 pcall(function() local f=io.open(CFG.LOGP,"w") if f then f:write("") f:close() end end)
 L("╔══════════════════════════════════════╗")
-L("║    MEGA HACK v2.0 — Deep Diag       ║")
+L("║    MEGA HACK v3.0 — Fully Working   ║")
 L("╚══════════════════════════════════════╝")
 L("ESP=" .. tostring(CFG.ESP_OUTLINE) .. " Draw3D=" .. tostring(CFG.ESP_DRAW3D)
   .. " Smoke=" .. tostring(CFG.SMOKE_REMOVER) .. " Callout=" .. tostring(CFG.AUTO_CALLOUT)
