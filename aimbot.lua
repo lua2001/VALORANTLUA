@@ -1,5 +1,5 @@
 -- LOGIN UI v4 — Flat layout on HUD canvas, no sub-containers
-local LOG="/storage/emulated/0/Android/data/com.tencent.tmgp.codev/files/UE4Game/CodeV/CodeV/Saved/Paks/puffer_temp/logintest_log.txt"
+local LOG=""
 local function L(m) pcall(function() local f=io.open(LOG,"a") if f then f:write("["..os.date("%H:%M:%S").."] "..tostring(m).."\n") f:close() end end) end
 pcall(function() local f=io.open(LOG,"w") if f then f:write("") f:close() end end)
 L("=== LOGIN UI v4 ===")
