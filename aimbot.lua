@@ -1,30 +1,101 @@
--- MEGA HACK v3.0 — Fully Working
--- Fixed: ESP Draw3D + Callout work with bots (p=nil)
+-- SKIN CHANGER v2.0 — Real Skin IDs + All Methods
 ----------------------------------------------------------------------
 local CFG = {
-    ESP_OUTLINE     = true,
-    ESP_DRAW3D      = true,
-    SMOKE_REMOVER   = true,
-    AUTO_CALLOUT    = true,
-    AIMBOT          = true,
-    SPIKE_TRACKER   = true,
+    LOG  = true,
+    LOGP = "/storage/emulated/0/Android/data/com.tencent.tmgp.codev/files/UE4Game/CodeV/CodeV/Saved/Paks/puffer_temp/skin_log.txt",
 
-    FOV             = 45,
-    MAXD            = 6000,
-    CHEST_Z         = 25,
-    MY_EYE_Z        = 55,
-    AIM_SMOOTH      = 0.15,
-    AIM_SMOOTH_FIRST= 0.6,
-    JITTER          = 0.3,
+    ---------------------------------------------------------------
+    -- 🎨 CHANGE YOUR DESIRED SKINS HERE!
+    -- Set the AvatarID you want for each weapon
+    -- Set to nil/false to keep default skin
+    ---------------------------------------------------------------
+    DESIRED_SKINS = {
+        -- Classic (CLA = 10101)
+        [10101] = 101005011,   -- 万铀引力辐爆者_标准_基础
 
-    TICK            = 0.020,
-    ESP_INTERVAL    = 0.5,
-    CALLOUT_CD      = 3.0,
-    LOG             = true,
-    LOGP            = "/storage/emulated/0/Android/data/com.tencent.tmgp.codev/files/UE4Game/CodeV/CodeV/Saved/Paks/puffer_temp/mega_logv3.txt",
+        -- Ghost (GHO = 10104)
+        [10104] = 104003011,   -- 天界神兵_标准_基础
+
+        -- Frenzy (FRE = 10103)
+        [10103] = 103003111,   -- 全息波普_标准_基础
+
+        -- Phantom (PHA = 10403)
+        -- [10403] = XXXXXX,   -- Add Phantom skin ID here
+
+        -- Vandal (VAN = 10404)
+        -- [10404] = XXXXXX,   -- Add Vandal skin ID here
+
+        -- Knife (JD = 10901)
+        -- [10901] = XXXXXX,   -- Add knife skin ID here
+    },
 }
 
-local ok_tt, TT = pcall(require, "Common.Framework.TimeTicker")
+----------------------------------------------------------------------
+-- ALL KNOWN SKINS DATABASE
+----------------------------------------------------------------------
+local SKIN_DB = {
+    -- ===== Classic (标配) 10101 =====
+    {id=101000000, name="Classic - Default"},
+    {id=101010400, name="Classic - 琉璃幻梦"},
+    {id=101001000, name="Classic - 涂鸦艺廊"},
+    {id=101002100, name="Classic - 寒冬兵器"},
+    {id=101050600, name="Classic - 国王工设"},
+    {id=101001200, name="Classic - 樱花"},
+    {id=101002401, name="Classic - 源能者危机001_基础"},
+    {id=101004211, name="Classic - 紫阙金琅_标准"},
+    {id=101004221, name="Classic - 紫阙金琅_橙色"},
+    {id=101004231, name="Classic - 紫阙金琅_蓝色"},
+    {id=101004241, name="Classic - 紫阙金琅_黄色"},
+    {id=101005011, name="Classic - 万铀引力辐爆者_标准"},
+    {id=101005021, name="Classic - 万铀引力辐爆者_合金"},
+    {id=101005031, name="Classic - 万铀引力辐爆者_黑色"},
+    {id=101005041, name="Classic - 万铀引力辐爆者_红蓝白"},
+    {id=101005110, name="Classic - 无垠星环_标准"},
+    {id=101005120, name="Classic - 无垠星环_绿色"},
+    {id=101005130, name="Classic - 无垠星环_红色"},
+    {id=101005140, name="Classic - 无垠星环_蓝色"},
+    -- ===== Shorty (短炮) 10102 =====
+    {id=102000000, name="Shorty - Default"},
+    {id=102002600, name="Shorty - 异彩晶棱II"},
+    {id=102051800, name="Shorty - 质感轻奢"},
+    {id=102001800, name="Shorty - 废土"},
+    -- ===== Frenzy (狂怒) 10103 =====
+    {id=103000000, name="Frenzy - Default"},
+    {id=103002800, name="Frenzy - 炽红快攻"},
+    {id=103051800, name="Frenzy - 质感轻奢"},
+    {id=103000300, name="Frenzy - 炫彩澎湃"},
+    {id=103006100, name="Frenzy - 泰坦兵器"},
+    {id=103010300, name="Frenzy - 巨神铁甲"},
+    {id=103001100, name="Frenzy - 漫天彩霞"},
+    {id=103002311, name="Frenzy - 起源_标准"},
+    {id=103000700, name="Frenzy - 金角生辉"},
+    {id=103003111, name="Frenzy - 全息波普_标准"},
+    {id=103003121, name="Frenzy - 全息波普_蓝色"},
+    {id=103003131, name="Frenzy - 全息波普_红色"},
+    {id=103003141, name="Frenzy - 全息波普_金色"},
+    -- ===== Ghost (鬼魅) 10104 =====
+    {id=104000000, name="Ghost - Default"},
+    {id=104001600, name="Ghost - 合金突袭"},
+    {id=104051710, name="Ghost - 本色混搭_贤者"},
+    {id=104051720, name="Ghost - 本色混搭_斯凯"},
+    {id=104002500, name="Ghost - 异彩晶棱"},
+    {id=104003011, name="Ghost - 天界神兵_标准"},
+    {id=104003021, name="Ghost - 天界神兵_绿色"},
+    {id=104003031, name="Ghost - 天界神兵_银色"},
+    {id=104005311, name="Ghost - 侦查力量_标准"},
+    {id=104005321, name="Ghost - 侦查力量_红色迷彩"},
+    {id=104005331, name="Ghost - 侦查力量_蓝色迷彩"},
+    {id=104005341, name="Ghost - 侦查力量_绿色迷彩"},
+    {id=104004711, name="Ghost - 奇幻朋克_标准"},
+    {id=104004721, name="Ghost - 奇幻朋克_绿色"},
+    {id=104004731, name="Ghost - 奇幻朋克_紫色"},
+    {id=104004741, name="Ghost - 奇幻朋克_橙色"},
+    {id=104003810, name="Ghost - 无人之境_标准"},
+    {id=104004400, name="Ghost - 无畏契约第一卷"},
+    {id=104006314, name="Ghost - 盖亚的复仇_红色"},
+    {id=104006324, name="Ghost - 盖亚的复仇_蓝色"},
+    {id=104006334, name="Ghost - 盖亚的复仇_绿色"},
+}
 
 ----------------------------------------------------------------------
 -- LOGGING
@@ -37,605 +108,295 @@ local function L(m)
     end)
 end
 
-----------------------------------------------------------------------
--- SAFE IMPORTS
-----------------------------------------------------------------------
-local function SI(name) local o,v = pcall(function() return import(name) end) return o and v or nil end
-local function SIL(name) local o,v = pcall(function() return import_func_lib(name) end) return o and v or nil end
-local function SR(name) local o,v = pcall(require, name) return o and v or nil end
+pcall(function() local f=io.open(CFG.LOGP,"w") if f then f:write("") f:close() end end)
+L("╔══════════════════════════════════════╗")
+L("║  SKIN CHANGER v2.0 — Real IDs       ║")
+L("╚══════════════════════════════════════╝")
 
 ----------------------------------------------------------------------
--- CACHED REFERENCES
+-- IMPORTS
 ----------------------------------------------------------------------
-local GP       = SIL("GameplayStatics")
-local KML      = SIL("KismetMathLibrary")
-local UKSL     = SIL("KismetSystemLibrary")
-local CVFunc   = SIL("CVFunctionLibrary")
-local SGPS_CLS = SI("SGBasePlayerState")
-local SGCH_CLS = SI("SGBaseCharacter")
-local AP       = SR("Game.Mod.BaseMod.GamePlay.Core.GAS.Util.AbilityPreDefine")
+local function SR(n) local o,v = pcall(require, n) return o and v or nil end
+local function SIL(n) local o,v = pcall(function() return import_func_lib(n) end) return o and v or nil end
+
+local GP = SIL("GameplayStatics")
 local RPCSender = SR("Game.Core.RPC.RPCSender")
+local GameSystemUtil = SR("Game.Core.Util.GameSystemUtil")
+local ok_tt, TT = pcall(require, "Common.Framework.TimeTicker")
 
--- Visibility trace
-local ETTQ_Vis = nil
-pcall(function()
-    local ECC = import("ECollisionChannel")
-    if ECC and ECC.ECC_Visibility and CVFunc then
-        ETTQ_Vis = CVFunc.ConvertToTraceType(ECC.ECC_Visibility)
-    end
-end)
-
-----------------------------------------------------------------------
--- HELPERS
-----------------------------------------------------------------------
 local function GetPC()
-    -- Method 1: GameAPI
     if GameAPI and GameAPI.GetPlayerController then
         local o,p = pcall(function() return GameAPI.GetPlayerController() end)
         if o and p and slua_isValid(p) then return p end
     end
-    -- Method 2: UGameplayStatics direct
-    if GP then
-        local o,p = pcall(function() return GP.GetPlayerController(slua_getWorld(), 0) end)
-        if o and p and slua_isValid(p) then return p end
-    end
 end
-
 local function GetPS()
-    -- Method 1: GameAPI
     if GameAPI and GameAPI.GetPlayerState then
         local o,p = pcall(function() return GameAPI.GetPlayerState() end)
         if o and p and slua_isValid(p) then return p end
     end
-    -- Method 2: From PC
-    local pc = GetPC()
-    if pc then
-        local o,p = pcall(function() return pc:GetSGPlayerState() end)
-        if o and p and slua_isValid(p) then return p end
-        local o2,p2 = pcall(function() return pc.PlayerState end)
-        if o2 and p2 and slua_isValid(p2) then return p2 end
-    end
 end
-
 local function GetCh(pc)
     if not pc then return end
     local o,c = pcall(function() return pc:GetSGBaseCharacter() end)
     if o and c and slua_isValid(c) then return c end
-    local o2,c2 = pcall(function() return pc:K2_GetPawn() end)
-    if o2 and c2 and slua_isValid(c2) then return c2 end
 end
 
-local function IsFiring(ch)
-    local o,f = pcall(function() return ch:HasPawnState(EPawnState_AFire) end)
-    return o and f or false
-end
-
-local function VDist(a,b) return math.sqrt((a.X-b.X)^2+(a.Y-b.Y)^2+(a.Z-b.Z)^2) end
-local function NA(a) while a>180 do a=a-360 end while a<-180 do a=a+360 end return a end
-local function LerpAng(c,t,s) return c + NA(t-c)*s end
-
-local function LookAt(f,t)
-    if KML and KML.FindLookAtRotation then
-        local o,r = pcall(function() return KML.FindLookAtRotation(f,t) end)
-        if o and r then return r end
-    end
-    local dx,dy,dz = t.X-f.X, t.Y-f.Y, t.Z-f.Z
-    local d2 = math.sqrt(dx*dx+dy*dy)
-    return FRotator(math.deg(math.atan(dz,d2)), math.deg(math.atan(dy,dx)), 0)
-end
-
-local function IsVisible(myChar, eyePos, targetPos)
-    if not UKSL or not ETTQ_Vis then return true end
-    local ok2, bHit = pcall(function()
-        local zc = FLinearColor(0,0,0,0)
-        return UKSL.LineTraceSingle(slua_getWorld(),
-            FVector(eyePos.X,eyePos.Y,eyePos.Z),
-            FVector(targetPos.X,targetPos.Y,targetPos.Z),
-            ETTQ_Vis, true, {myChar}, 0, nil, false, zc, zc, 0.0)
+----------------------------------------------------------------------
+-- DIAGNOSE: Log current weapon skins
+----------------------------------------------------------------------
+local function LogCurrentWeapons(tag)
+    local pc = GetPC()
+    local ch = pc and GetCh(pc)
+    if not ch then L("[" .. tag .. "] No character") return end
+    pcall(function()
+        local weapons = ch:GetWeaponList()
+        if weapons then
+            for i = 0, weapons:Num() - 1 do
+                local w = weapons:Get(i)
+                if slua_isValid(w) then
+                    local wid = w:GetWeaponID()
+                    local avid = w:GetWeaponAvatarID()
+                    L("[" .. tag .. "] Weapon ID=" .. tostring(wid) .. " AvatarID=" .. tostring(avid))
+                end
+            end
+        end
     end)
-    if ok2 then return not bHit end
-    return true
 end
 
 ----------------------------------------------------------------------
--- GET ENEMIES — Multiple methods with detailed logging
+-- METHOD 1: SetWeaponAvatarOverride (best chance — no ownership check)
 ----------------------------------------------------------------------
-local diagCount = 0
-local function GetEnemies()
-    local e = {}
-    local method = "none"
-    diagCount = diagCount + 1
-    local doDiag = (diagCount <= 3) or (diagCount % 500 == 0)
-
-    -- METHOD 1: GameAPI.GetEnemies() — the game's own function
-    if #e == 0 and GameAPI and GameAPI.GetEnemies then
+local function Method1_Override(ps, weaponID, skinID)
+    local ok = false
+    -- Try the function directly
+    pcall(function()
+        ps:SetWeaponAvatarOverride(weaponID, {skinID})
+        ok = true
+        L("[M1] SetWeaponAvatarOverride(" .. weaponID .. ", {" .. skinID .. "}) OK")
+    end)
+    if ok then return true end
+    -- Fallback: direct table + manual apply
+    pcall(function()
+        ps.WeaponAvatarOverrideInfo[weaponID] = {skinID}
+        L("[M1] Direct table set OK")
         pcall(function()
-            local enemies, count = GameAPI.GetEnemies()
-            if enemies then
-                for _, ps in pairs(enemies) do
-                    if slua_isValid(ps) and ps:IsAlive() then
-                        local c = ps:GetSGBaseCharacter()
-                        if c and slua_isValid(c) then
-                            e[#e+1] = {p=ps, c=c}
-                        end
-                    end
-                end
-                if #e > 0 then method = "GameAPI.GetEnemies" end
-            end
+            ps:ApplyWeaponAvatarImmediately(weaponID)
+            L("[M1] ApplyWeaponAvatarImmediately OK")
+            ok = true
         end)
-        if doDiag then L("[DIAG] M1 GameAPI.GetEnemies => " .. #e) end
-    end
+    end)
+    return ok
+end
 
-    -- METHOD 2: GameAPI.GetAllPlayers() then filter
-    if #e == 0 and GameAPI and GameAPI.GetAllPlayers then
-        pcall(function()
-            local all = GameAPI.GetAllPlayers()
-            if all then
-                local total = 0
-                for _, ps in pairs(all) do
-                    total = total + 1
-                    if slua_isValid(ps) then
-                        local skip = false
-                        if AP and AP.IsSameCampWithLocalPlayer then
-                            local oc,s = pcall(function() return AP.IsSameCampWithLocalPlayer(ps) end)
-                            if oc and s then skip = true end
-                        end
-                        if not skip then
-                            local alive = false
-                            pcall(function() alive = ps:IsAlive() end)
-                            if alive then
-                                local c = nil
-                                pcall(function() c = ps:GetSGBaseCharacter() end)
-                                if c and slua_isValid(c) then
-                                    e[#e+1] = {p=ps, c=c}
-                                end
-                            end
-                        end
-                    end
-                end
-                if doDiag then L("[DIAG] M2 GetAllPlayers total=" .. total .. " enemies=" .. #e) end
-                if #e > 0 then method = "GetAllPlayers" end
+----------------------------------------------------------------------
+-- METHOD 2: Modify PlayerInfo backpack data
+----------------------------------------------------------------------
+local function Method2_Backpack(ps, weaponID, skinID)
+    local ok = false
+    pcall(function()
+        local pi = ps.PlayerInfo
+        if not pi then L("[M2] No PlayerInfo") return end
+        local bpId = pi.DefaultWeaponBackpackId or 1
+        local awb = pi.AllWeaponBackpack
+        if not awb or not awb[bpId] then L("[M2] No backpack") return end
+        local bp = awb[bpId]
+        if not bp.WeaponSkinList then L("[M2] No WeaponSkinList") return end
+        
+        local found = false
+        for _, ws in ipairs(bp.WeaponSkinList) do
+            if ws.WeaponID == weaponID then
+                local old = ws.SkinList[1]
+                ws.SkinList = {skinID}
+                L("[M2] WeaponID=" .. weaponID .. ": " .. tostring(old) .. " -> " .. skinID)
+                found = true
+                ok = true
+                break
             end
-        end)
-    end
-
-    -- METHOD 3: GetAllActorsOfClass(SGBasePlayerState)
-    if #e == 0 and GameAPI and GameAPI.GetAllActorsOfClass and SGPS_CLS then
-        pcall(function()
-            local ap = GameAPI.GetAllActorsOfClass(SGPS_CLS)
-            if ap then
-                local total = 0
-                for _, ps in pairs(ap) do
-                    total = total + 1
-                    if slua_isValid(ps) and ps:IsAlive() then
-                        local skip = false
-                        if AP and AP.IsSameCampWithLocalPlayer then
-                            local oc,s = pcall(function() return AP.IsSameCampWithLocalPlayer(ps) end)
-                            if oc and s then skip = true end
-                        end
-                        if not skip then
-                            local c = nil
-                            pcall(function() c = ps:GetSGBaseCharacter() end)
-                            if c and slua_isValid(c) then
-                                e[#e+1] = {p=ps, c=c}
-                            end
-                        end
-                    end
-                end
-                if doDiag then L("[DIAG] M3 ActorsOfClass(SGPS) total=" .. total .. " enemies=" .. #e) end
-                if #e > 0 then method = "ActorsOfClass-PS" end
-            end
-        end)
-    end
-
-    -- METHOD 4: GetAllActorsOfClass(SGBaseCharacter)
-    if #e == 0 then
-        local chClass = SGCH_CLS
-        if AP and AP.ASGBaseCharacterClass then chClass = AP.ASGBaseCharacterClass end
-        if chClass and GameAPI and GameAPI.GetAllActorsOfClass then
-            local myChar = nil
-            pcall(function() local pc = GetPC() if pc then myChar = GetCh(pc) end end)
-            pcall(function()
-                local ac = GameAPI.GetAllActorsOfClass(chClass)
-                if ac then
-                    local total = 0
-                    for _, ch in pairs(ac) do
-                        total = total + 1
-                        if slua_isValid(ch) and ch ~= myChar then
-                            local alive = true
-                            pcall(function() local a = ch:IsAlive() alive = a end)
-                            pcall(function() if ch:IsDying() then alive = false end end)
-                            if alive then
-                                local isEnemy = true
-                                if AP and AP.IsSameCampWithLocalPlayer then
-                                    local o,s = pcall(function() return AP.IsSameCampWithLocalPlayer(ch) end)
-                                    if o then isEnemy = not s end
-                                end
-                                if isEnemy then e[#e+1] = {p=nil, c=ch} end
-                            end
-                        end
-                    end
-                    if doDiag then L("[DIAG] M4 ActorsOfClass(CH) total=" .. total .. " enemies=" .. #e) end
-                    if #e > 0 then method = "ActorsOfClass-CH" end
-                end
-            end)
         end
-    end
-
-    if doDiag and #e == 0 then
-        -- Deep diagnostic: what globals exist?
-        L("[DIAG] === DEEP DIAG ===")
-        L("[DIAG] GameAPI=" .. tostring(GameAPI ~= nil))
-        if GameAPI then
-            L("[DIAG] GameAPI.GetEnemies=" .. tostring(GameAPI.GetEnemies ~= nil))
-            L("[DIAG] GameAPI.GetAllPlayers=" .. tostring(GameAPI.GetAllPlayers ~= nil))
-            L("[DIAG] GameAPI.GetAllActorsOfClass=" .. tostring(GameAPI.GetAllActorsOfClass ~= nil))
-            L("[DIAG] GameAPI.GetGameState=" .. tostring(GameAPI.GetGameState ~= nil))
-            L("[DIAG] GameAPI.GetPlayerController=" .. tostring(GameAPI.GetPlayerController ~= nil))
-            L("[DIAG] GameAPI.GetPlayerState=" .. tostring(GameAPI.GetPlayerState ~= nil))
-            -- Test GetGameState
-            pcall(function()
-                local gs = GameAPI.GetGameState()
-                L("[DIAG] GameState=" .. tostring(gs) .. " valid=" .. tostring(slua_isValid(gs)))
-                if gs then
-                    -- Try to get player array
-                    local pa = gs:GetNonObPlayerArray()
-                    local cnt = 0
-                    if pa then for _ in pairs(pa) do cnt = cnt + 1 end end
-                    L("[DIAG] PlayerArray count=" .. cnt)
-                end
-            end)
-            -- Test PC/PS
-            pcall(function()
-                local pc = GetPC()
-                L("[DIAG] PC=" .. tostring(pc) .. " valid=" .. tostring(pc and slua_isValid(pc)))
-                if pc then
-                    local ch = GetCh(pc)
-                    L("[DIAG] MyChar=" .. tostring(ch) .. " valid=" .. tostring(ch and slua_isValid(ch)))
-                    if ch then
-                        local loc = ch:K2_GetActorLocation()
-                        L("[DIAG] MyPos=" .. tostring(loc.X) .. "," .. tostring(loc.Y) .. "," .. tostring(loc.Z))
-                    end
-                end
-            end)
+        if not found then
+            bp.WeaponSkinList[#bp.WeaponSkinList + 1] = {WeaponID = weaponID, SkinList = {skinID}}
+            L("[M2] Added new skin entry")
+            ok = true
         end
-        -- Check if slua_getWorld works
-        pcall(function()
-            local w = slua_getWorld()
-            L("[DIAG] World=" .. tostring(w) .. " valid=" .. tostring(slua_isValid(w)))
-        end)
-        -- Try direct UGameplayStatics
-        if GP then
-            pcall(function()
-                local pc = GP.GetPlayerController(slua_getWorld(), 0)
-                L("[DIAG] GP.GetPlayerController=" .. tostring(pc) .. " valid=" .. tostring(pc and slua_isValid(pc)))
-            end)
+    end)
+    return ok
+end
+
+----------------------------------------------------------------------
+-- METHOD 3: ServerRPC (Training mode)
+----------------------------------------------------------------------
+local function Method3_RPC(weaponID, skinID)
+    if not RPCSender then return false end
+    local ok = false
+    pcall(function()
+        RPCSender:Server("ServerRPC_ChangeWeaponAvatar", 1, weaponID, skinID, true)
+        L("[M3] ServerRPC_ChangeWeaponAvatar sent: wep=" .. weaponID .. " skin=" .. skinID)
+        ok = true
+    end)
+    return ok
+end
+
+----------------------------------------------------------------------
+-- METHOD 4: Re-equip weapon (forces skin refresh)
+----------------------------------------------------------------------
+local function Method4_ReEquip(ps, weaponID)
+    local ok = false
+    pcall(function()
+        local eq = ps.SGEquipment
+        if not slua_isValid(eq) then L("[M4] No SGEquipment") return end
+        local itemID = eq:GetItemID(weaponID)
+        if not itemID then L("[M4] Weapon " .. weaponID .. " not in inventory") return end
+        local acqType = eq:GetItemAcquireType(itemID)
+        eq:RemoveItemsByResID(weaponID)
+        eq:AddItemByResID(weaponID, 1, acqType or 0)
+        L("[M4] Re-equipped weapon " .. weaponID .. " (AcqType=" .. tostring(acqType) .. ")")
+        ok = true
+    end)
+    return ok
+end
+
+----------------------------------------------------------------------
+-- METHOD 5: WeaponSkinDetails injection (fake ownership)
+----------------------------------------------------------------------
+local function Method5_FakeOwnership(ps, weaponID, skinID)
+    local ok = false
+    pcall(function()
+        local pi = ps.PlayerInfo
+        if not pi then return end
+        -- Try to get skin table data
+        local skinData = nil
+        pcall(function() skinData = SGTable_GetTableData("WeaponSkinTable", skinID) end)
+        if not skinData then
+            pcall(function() skinData = DataTableCacheManager.GetTableData("WeaponSkinTable", skinID) end)
         end
-        -- Try raw GetAllActorsOfClass on world
-        pcall(function()
-            if SGPS_CLS then
-                local actors = GP.GetAllActorsOfClass(slua_getWorld(), SGPS_CLS)
-                local cnt = 0
-                if actors then
-                    local num = actors:Num()
-                    L("[DIAG] GP.GetAllActorsOfClass(SGPS) Num=" .. tostring(num))
-                    for i = 0, num - 1 do
-                        local a = actors:Get(i)
-                        if a then
-                            cnt = cnt + 1
-                            local n = "?"
-                            pcall(function() n = a:GetPlayerName() end)
-                            L("[DIAG]   Actor#" .. i .. " name=" .. tostring(n))
-                        end
-                    end
-                else
-                    L("[DIAG] GP.GetAllActorsOfClass returned nil")
-                end
-            end
-        end)
-        L("[DIAG] === END DEEP DIAG ===")
-    end
-
-    if #e > 0 and doDiag then
-        L("[ENEMIES] Found " .. #e .. " via " .. method)
-    end
-    return e
-end
-
-----------------------------------------------------------------------
--- STATE
-----------------------------------------------------------------------
-local S = {
-    inM=false, mca=0, tc=0, ltk=nil, fireFrames=0, lockedRot=nil,
-    espAcc=0, outlinedEnemies={}, calloutTimers={}, DecoSys=nil,
-}
-
-----------------------------------------------------------------------
--- ESP OUTLINE
-----------------------------------------------------------------------
-local function DoESPOutline(enemies)
-    if not CFG.ESP_OUTLINE or not S.DecoSys then return end
-    local cur = {}
-    for _, v in ipairs(enemies) do
-        pcall(function()
-            local k = tostring(v.c)
-            cur[k] = true
-            if not S.outlinedEnemies[k] then
-                pcall(function() S.DecoSys:SetCharacterRevealed(v.c, FLinearColor(1,0,0,1)) end)
-                S.outlinedEnemies[k] = v.c
-                L("[ESP] Outlined: " .. k)
-            end
-        end)
-    end
-    for k, ch in pairs(S.outlinedEnemies) do
-        if not cur[k] then
-            pcall(function() S.DecoSys:RemoveCharacterDecoration(ch) end)
-            S.outlinedEnemies[k] = nil
+        if skinData then
+            L("[M5] Found skin data: SkinGroupID=" .. tostring(skinData.SkinGroupID) .. " Level=" .. tostring(skinData.Level))
+            -- Inject into WeaponSkinDetails
+            if not pi.WeaponSkinDetails then pi.WeaponSkinDetails = {} end
+            pi.WeaponSkinDetails[skinData.SkinGroupID] = {
+                Level = skinData.Level or 1,
+                FormIdList = {skinData.FormIndex or 0}
+            }
+            L("[M5] Injected fake ownership for SkinGroupID=" .. tostring(skinData.SkinGroupID))
+            ok = true
+        else
+            L("[M5] Skin " .. skinID .. " not in WeaponSkinTable")
         end
-    end
+    end)
+    return ok
 end
 
 ----------------------------------------------------------------------
--- ESP DRAW 3D (works with bots and real players)
+-- APPLY ALL DESIRED SKINS
 ----------------------------------------------------------------------
-local function DoESPDraw3D(enemies, myEye)
-    if not CFG.ESP_DRAW3D or not UKSL then return end
-    local world = slua_getWorld()
-    for _, v in ipairs(enemies) do
-        pcall(function()
-            local pos = v.c:K2_GetActorLocation()
-            if not pos then return end
-            local dist = VDist(myEye, pos)
-            local dur = CFG.ESP_INTERVAL + 0.15
-
-            -- Box around enemy
-            pcall(function()
-                UKSL.DrawDebugBox(world, pos + FVector(0,0,45), FVector(30,30,90),
-                    FLinearColor(1, 0, 0, 0.8), FRotator(0,0,0), dur, 2)
-            end)
-
-            -- Build info text
-            local info = ""
-            -- Try to get name
-            local nm = "Enemy"
-            if v.p then
-                pcall(function() nm = v.p:GetPlayerName() end)
-            else
-                -- For bots/characters, try to get display name
-                pcall(function() nm = UKSL.GetDisplayName(v.c) end)
-                if nm == "Enemy" then
-                    pcall(function() nm = UKSL.GetObjectName(v.c) end)
+local function ApplyAllSkins()
+    L("")
+    L("========================================")
+    L("  APPLYING SKINS")
+    L("========================================")
+    
+    local ps = GetPS()
+    if not ps then L("[ERR] No PlayerState!") return end
+    
+    -- Log current state
+    LogCurrentWeapons("BEFORE")
+    
+    -- Log PlayerInfo state
+    pcall(function()
+        local pi = ps.PlayerInfo
+        if pi then
+            L("[INFO] BackpackID=" .. tostring(pi.DefaultWeaponBackpackId))
+            L("[INFO] WeaponAvatarOverrideInfo exists=" .. tostring(ps.WeaponAvatarOverrideInfo ~= nil))
+        end
+    end)
+    
+    for weaponID, skinID in pairs(CFG.DESIRED_SKINS) do
+        if skinID then
+            L("")
+            L("--- WeaponID=" .. weaponID .. " -> SkinID=" .. skinID .. " ---")
+            
+            -- Find skin name from DB
+            for _, s in ipairs(SKIN_DB) do
+                if s.id == skinID then
+                    L("    Skin: " .. s.name)
+                    break
                 end
             end
-
-            -- Try to get HP/Shield
-            local hp, sh = nil, nil
-            if v.p then
-                pcall(function() hp = math.floor(v.p:GetAttributeCurValue("Health")) end)
-                pcall(function() sh = math.floor(v.p:GetAttributeCurValue("Shield")) end)
-            end
-            if not hp then
-                -- Try from character directly (GetAttributeCurValue on PlayerState linked to char)
-                pcall(function()
-                    local ps = v.c:GetPlayerState()
-                    if ps then
-                        hp = math.floor(ps:GetAttributeCurValue("Health"))
-                        sh = math.floor(ps:GetAttributeCurValue("Shield"))
-                    end
-                end)
-            end
-
-            -- Check spike
-            local spike = ""
-            pcall(function()
-                local sd = nil
-                if v.p then sd = v.p:GetSuperData()
-                else
-                    local ps2 = v.c:GetPlayerState()
-                    if ps2 then sd = ps2:GetSuperData() end
-                end
-                if sd and sd.bHasSpike then spike = " *SPIKE*" end
-            end)
-
-            -- Check if alive/dying
-            local alive = true
-            pcall(function() if v.c:IsDying() then alive = false end end)
-            local aliveStr = alive and "" or " [DEAD]"
-
-            -- Format
-            if hp then
-                info = string.format("%s [HP:%d SH:%s] %dm%s%s", nm, hp, tostring(sh or 0), math.floor(dist/100), spike, aliveStr)
-            else
-                info = string.format("%s %dm%s%s", nm, math.floor(dist/100), spike, aliveStr)
-            end
-
-            -- Draw text above enemy
-            pcall(function()
-                UKSL.DrawDebugString(world, pos + FVector(0,0,150), info, nil, FLinearColor(1,0.3,0.3,1), dur)
-            end)
-
-            -- Draw line from me to enemy
-            pcall(function()
-                UKSL.DrawDebugLine(world,
-                    FVector(myEye.X, myEye.Y, myEye.Z - 30),
-                    pos + FVector(0,0,50),
-                    FLinearColor(1, 0, 0, 0.2), dur, 1)
-            end)
-        end)
-    end
-end
-
-----------------------------------------------------------------------
--- AUTO CALLOUT (works with bots and players)
-----------------------------------------------------------------------
-local function DoAutoCallout(enemies, myChar)
-    if not CFG.AUTO_CALLOUT or not RPCSender then return end
-    local now = os.clock()
-    for _, v in ipairs(enemies) do
-        pcall(function()
-            local pos = v.c:K2_GetActorLocation()
-            if not pos then return end
-            local mp = myChar:K2_GetActorLocation()
-            local eyePos = {X=mp.X, Y=mp.Y, Z=mp.Z + CFG.MY_EYE_Z}
-
-            -- Cooldown per character
-            local ck = tostring(v.c)
-            if S.calloutTimers[ck] and (now - S.calloutTimers[ck]) < CFG.CALLOUT_CD then return end
-
-            -- Only callout if visible
-            if not IsVisible(myChar, eyePos, pos) then return end
-
-            -- Method 1: PlayerKey RPC (works with real players)
-            if v.p then
-                pcall(function()
-                    local key = v.p:GetPlayerKey()
-                    if key then
-                        RPCSender:Server("ServerRPC_OnReceivePostEnemySpotted", key, true, {})
-                        S.calloutTimers[ck] = now
-                        L("[CALLOUT] player key=" .. tostring(key))
-                    end
-                end)
-            else
-                -- Method 2: QuickSign ping at enemy position (works with bots)
-                pcall(function()
-                    RPCSender:Server("ServerRPC_QuickSign", 1, pos, nil, 0, false, false)
-                    S.calloutTimers[ck] = now
-                    L("[CALLOUT] ping at pos")
-                end)
-            end
-        end)
-    end
-end
-
-----------------------------------------------------------------------
--- AIMBOT
-----------------------------------------------------------------------
-local function DoAimbot(enemies, myChar, myEye, cr, pc)
-    if not CFG.AIMBOT then return end
-    if not IsFiring(myChar) then S.lockedRot=nil S.fireFrames=0 return end
-    S.fireFrames = S.fireFrames + 1
-    if #enemies == 0 then S.lockedRot=nil return end
-
-    local be,bp,bestAng = nil,nil,999
-    for _,v in ipairs(enemies) do
-        local ok2,ep = pcall(function() return v.c:K2_GetActorLocation() end)
-        if ok2 and ep then
-            ep.Z = ep.Z + CFG.CHEST_Z
-            local d = VDist(myEye, ep)
-            if d <= CFG.MAXD then
-                local tr = LookAt(myEye, ep)
-                local dY,dP = NA(tr.Yaw-cr.Yaw), NA(tr.Pitch-cr.Pitch)
-                local ang = math.sqrt(dY*dY+dP*dP)
-                if ang <= CFG.FOV/2 and IsVisible(myChar, myEye, ep) then
-                    if ang < bestAng then bestAng=ang be=v bp=ep end
-                end
+            
+            -- Try Method 5 first (fake ownership)
+            Method5_FakeOwnership(ps, weaponID, skinID)
+            
+            -- Try Method 1 (override — best chance)
+            local m1 = Method1_Override(ps, weaponID, skinID)
+            L("    M1 Override: " .. tostring(m1))
+            
+            -- Try Method 2 (backpack modify)
+            local m2 = Method2_Backpack(ps, weaponID, skinID)
+            L("    M2 Backpack: " .. tostring(m2))
+            
+            -- Try Method 3 (server RPC — training only)
+            local m3 = Method3_RPC(weaponID, skinID)
+            L("    M3 RPC: " .. tostring(m3))
+            
+            -- Try Method 4 (re-equip to refresh)
+            if m1 or m2 then
+                local m4 = Method4_ReEquip(ps, weaponID)
+                L("    M4 ReEquip: " .. tostring(m4))
             end
         end
     end
-    if not be or not bp then S.lockedRot=nil return end
-    local ek = nil pcall(function() ek = be.p and be.p:GetPlayerKey() or "bot" end)
-    if ek ~= S.ltk then S.ltk=ek L("[AIM] tgt="..tostring(ek).." ang="..string.format("%.1f",bestAng)) end
-    local rot = LookAt(myEye, bp)
-    local sm = S.fireFrames==1 and CFG.AIM_SMOOTH_FIRST or CFG.AIM_SMOOTH
-    local np = LerpAng(cr.Pitch, rot.Pitch + (math.random()-0.5)*CFG.JITTER, sm)
-    local ny = LerpAng(cr.Yaw, rot.Yaw + (math.random()-0.5)*CFG.JITTER, sm)
-    pcall(function() pc:ClientSetRotation(FRotator(np,ny,0), false) end)
+    
+    -- Verify after
+    L("")
+    LogCurrentWeapons("AFTER")
+    
+    L("")
+    L("========================================")
+    L("  DONE — Check your weapons in-game!")
+    L("========================================")
 end
 
 ----------------------------------------------------------------------
--- MAIN TICK
+-- MAIN LOOP: Wait for match, then apply once
 ----------------------------------------------------------------------
+local applied = false
+local tc = 0
+
 local function OnTick(dt)
-    S.tc = S.tc + 1
-
-    -- Match check every 1s
-    S.mca = S.mca + dt
-    if S.mca >= 1.0 then
-        S.mca = 0
-        local was = S.inM
-        local pc = GetPC()
-        local ps = GetPS()
-        local ch = pc and GetCh(pc)
-        local alive = false
-        if ps then pcall(function() alive = ps:IsAlive() end) end
-        S.inM = (pc ~= nil) and (ch ~= nil) and alive
-        if S.inM and not was then
-            L("=== MATCH START ===")
-            S.outlinedEnemies = {}
-            S.calloutTimers = {}
-            -- Try to get DecorationSystem
-            pcall(function()
-                local GSU = require("Game.Core.Util.GameSystemUtil")
-                if GSU and GSU.GetOrCreateGameSystem then
-                    S.DecoSys = GSU.GetOrCreateGameSystem("DecorationSystem")
-                    L("[DECO] DecoSys=" .. tostring(S.DecoSys ~= nil))
-                end
-            end)
-        elseif not S.inM and was then
-            L("=== MATCH END ===")
-            S.ltk = nil
-        end
-    end
-    if not S.inM then return end
-
-    local pc = GetPC() if not pc then return end
-    local myChar = GetCh(pc) if not myChar then return end
-    local mp = nil pcall(function() mp = myChar:K2_GetActorLocation() end)
-    if not mp then return end
-    local myEye = {X=mp.X, Y=mp.Y, Z=mp.Z+CFG.MY_EYE_Z}
-    local cr = nil pcall(function() cr = pc:GetControlRotation() end)
-    if not cr then return end
-
-    local enemies = GetEnemies()
-
-    -- AIMBOT (every tick)
-    DoAimbot(enemies, myChar, myEye, cr, pc)
-
-    -- ESP (at intervals)
-    S.espAcc = S.espAcc + dt
-    if S.espAcc >= CFG.ESP_INTERVAL then
-        S.espAcc = 0
-        if #enemies > 0 then
-            DoESPOutline(enemies)
-            DoESPDraw3D(enemies, myEye)
-            DoAutoCallout(enemies, myChar)
-        end
-    end
-
-    if S.tc % 500 == 0 then
-        L("[STATUS] t=" .. S.tc .. " e=" .. #enemies .. " fire=" .. tostring(IsFiring(myChar)))
-    end
+    tc = tc + 1
+    if applied then return end
+    
+    local ps = GetPS()
+    if not ps then return end
+    local alive = false
+    pcall(function() alive = ps:IsAlive() end)
+    if not alive then return end
+    
+    -- Wait 3 seconds after alive
+    if tc < 150 then return end
+    
+    applied = true
+    ApplyAllSkins()
 end
 
 ----------------------------------------------------------------------
 -- STARTUP
 ----------------------------------------------------------------------
-pcall(function() local f=io.open(CFG.LOGP,"w") if f then f:write("") f:close() end end)
-L("╔══════════════════════════════════════╗")
-L("║    MEGA HACK v3.0 — Fully Working   ║")
-L("╚══════════════════════════════════════╝")
-L("ESP=" .. tostring(CFG.ESP_OUTLINE) .. " Draw3D=" .. tostring(CFG.ESP_DRAW3D)
-  .. " Smoke=" .. tostring(CFG.SMOKE_REMOVER) .. " Callout=" .. tostring(CFG.AUTO_CALLOUT)
-  .. " Aimbot=" .. tostring(CFG.AIMBOT))
-L("[INIT] AP=" .. tostring(AP~=nil) .. " SGPS=" .. tostring(SGPS_CLS~=nil)
-  .. " SGCH=" .. tostring(SGCH_CLS~=nil) .. " KML=" .. tostring(KML~=nil)
-  .. " UKSL=" .. tostring(UKSL~=nil) .. " ETTQ=" .. tostring(ETTQ_Vis~=nil)
-  .. " RPC=" .. tostring(RPCSender~=nil) .. " GP=" .. tostring(GP~=nil))
-L("[INIT] GameAPI=" .. tostring(GameAPI~=nil))
-if GameAPI then
-    L("[INIT] GameAPI.GetEnemies=" .. tostring(GameAPI.GetEnemies~=nil)
-      .. " GetAllPlayers=" .. tostring(GameAPI.GetAllPlayers~=nil)
-      .. " GetAllActorsOfClass=" .. tostring(GameAPI.GetAllActorsOfClass~=nil)
-      .. " GetGameState=" .. tostring(GameAPI.GetGameState~=nil))
+L("Desired skins:")
+for wid, sid in pairs(CFG.DESIRED_SKINS) do
+    if sid then
+        local name = "Unknown"
+        for _, s in ipairs(SKIN_DB) do
+            if s.id == sid then name = s.name break end
+        end
+        L("  WeaponID=" .. wid .. " -> " .. sid .. " (" .. name .. ")")
+    end
 end
-L("[INIT] slua_getWorld=" .. tostring(slua_getWorld~=nil)
-  .. " slua_isValid=" .. tostring(slua_isValid~=nil)
-  .. " EPawnState_AFire=" .. tostring(EPawnState_AFire~=nil))
-L("[INIT] GIsClient=" .. tostring(GIsClient) .. " GIsDS=" .. tostring(GIsDS))
 
 if ok_tt then
-    TT.AddTimerLoop(CFG.TICK, OnTick)
-    L("[BOOT] Timer started!")
+    TT.AddTimerLoop(0.02, OnTick)
+    L("[BOOT] Timer started, waiting for match...")
 else
     L("[FATAL] TimeTicker not found!")
 end
